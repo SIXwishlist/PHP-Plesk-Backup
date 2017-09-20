@@ -23,6 +23,6 @@ $config = [
 
   "basedir" => "/backup", //base directory to be used for backup on remote ftp
   "date_format" => date("m_d_Y"), //to be used in file names
-  "max_file_life" => 40 //in days
-
+  "max_file_life" => 40, //max lifetime for old backup files before they are deleted (in days)
+  "max_waiting_time" => 300, // max waiting time before proceeding with the next task leaving the old one going on in background (in seconds)
 ];

@@ -27,6 +27,8 @@ class BackupHelper
     private $_date_format;
     private $_max_file_life;
     private $_basedir;
+    private $_max_waiting_time;
+    private $_sleep_time = 10;
 
     private $_link;
 
@@ -48,6 +50,7 @@ class BackupHelper
         $this->_basedir = $config['basedir'];
         $this->_date_format = $config['date_format'];
         $this->_max_file_life = $config['max_file_life'];
+        $this->_max_waiting_time = $config['max_waiting_time'];
 
         //plesk api backup
         $this->_client = new PleskApiClient($this->_hostname);
@@ -167,12 +170,14 @@ class BackupHelper
 
       if ($task_id && $task_id > 0){
         echo "Running task id ".$task_id." ...\n";
-        while ($this->getTaskStatus($task_id) != "finished"){
+        $i = 0;
+        while ($this->getTaskStatus($task_id) != "finished" && $i < ($this->_max_waiting_time/$this->_sleep_time)){
           echo "[".date('Y-m-d H:i:s')."] Waiting for the task to be completed ...\n";
-          sleep(10);
+          sleep($this->_sleep_time);
+          $i++;
         }
       } else {
-        echo "There was an error in getting the task id!";exit;
+        echo "There was an error in getting the task id!";
       }
     }
 
