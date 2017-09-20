@@ -18,7 +18,7 @@ $config = [
   "ftp_host" => "",
   "ftp_username" => "",
   "ftp_pass" => "",
-  "ftp_passive_mode" => true,
+  "ftp_passive_mode" => 'true', //must be a string ('true' or 'false')
 
   //mysql settings of the machine where we want to perform the backup
   "mysql_host" => "localhost",

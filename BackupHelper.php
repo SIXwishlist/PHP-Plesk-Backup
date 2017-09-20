@@ -49,7 +49,7 @@ class BackupHelper
         $this->_ftp_host = $config['ftp_host'];
         $this->_ftp_username = $config['ftp_username'];
         $this->_ftp_pass = $config['ftp_pass'];
-        $this->_ftp_passive_mode = (isset($config['ftp_passive_mode'])) ? $config['ftp_passive_mode'] : true;
+        $this->_ftp_passive_mode = (isset($config['ftp_passive_mode'])) ? $config['ftp_passive_mode'] : 'true';
 
         $this->_mysql_host = (isset($config['mysql_host'])) ? $config['mysql_host'] : "localhost";
         $this->_mysql_user = (isset($config['mysql_user'])) ? $config['mysql_user'] : "admin";
@@ -172,10 +172,15 @@ class BackupHelper
 
       $query = mysqli_query($this->_link,"SELECT COUNT(*) as count FROM backupsscheduled WHERE obj_id=".$id_dom." AND obj_type='domain'");
       while ($row=mysqli_fetch_array($query)) { $count = $row['count']; }
-      $query_string = "INSERT INTO backupssettings (obj_id,obj_type,repository,last,period,active,processed, rotation, prefix, email, split_size, suspend, with_content, backup_day, backup_time, content_type, full_backup_period, mssql_native_backup, backupExcludeFilesId, backupExcludeLogs) VALUES
-      (".$id_dom.",'domain','ftp','".date('Y-m-d H:i:s')."', '604800', 'true', 'false', 5, '','".$this->_scheduler_alert_email."', 0, 'false', 'true', ".$this->_scheduler_day.", '".$this->_scheduler_time."', 'backup_content_all_at_domain', 0, 1, 2, 1)";
+      $query_string = "INSERT INTO backupsscheduled (`obj_id`,`obj_type`,`repository`,`last,period`,`active`,`processed`,`rotation`,`prefix`,`email`,`split_size`,`suspend`,`with_content`,`backup_day`,`backup_time`,`content_type`,`full_backup_period`,`mssql_native_backup`,`backupExcludeFilesId`,`backupExcludeLogs`) VALUES
+      (".$id_dom.",'domain','ftp','".date('Y-m-d H:i:s')."', '604800', 'true', 'false', 5, '','".$this->_scheduler_alert_email."', 0, 'false', 'true', '".$this->_scheduler_day."', '".$this->_scheduler_time."', 'backup_content_all_at_domain', 0, 1, 2, 1)";
       if ($count > 0 ){
-            mysqli_query($this->_link,str_replace("INSERT","REPLACE",$query_string));
+        //update only the settings that are configurable, the other ones should be already ok!
+            mysqli_query($this->_link,"UPDATE backupsscheduled SET
+              `backup_day` = '".$this->_scheduler_day."',
+              `backup_time` = '".$this->_scheduler_time."',
+              `email` = '".$this->_scheduler_alert_email."'
+            WHERE obj_type ='domain' AND obj_id =".$id_dom);
       } else {
             mysqli_query($this->_link,$query_string);
       }
