@@ -16,6 +16,7 @@ class BackupHelper
     private $_ftp_host;
     private $_ftp_username;
     private $_ftp_pass;
+    private $_ftp_passive_mode;
 
     private $_hostname;
 
@@ -36,25 +37,36 @@ class BackupHelper
 
     public function __construct($config)
     {
+
+        if(!isset($config['hostname']) || !isset($config['ftp_host']) || !isset($config['ftp_username']) || !isset($config['ftp_pass']) || !isset($config['mysql_pass'])) {
+          throw new Exception('Missing settings! Check your config.php file.');
+        }
+
         $this->_ftp_host = $config['ftp_host'];
         $this->_ftp_username = $config['ftp_username'];
         $this->_ftp_pass = $config['ftp_pass'];
+        $this->_ftp_passive_mode = (isset($config['ftp_passive_mode'])) ? $config['ftp_passive_mode'] : true;
 
-        $this->_mysql_host = $config['mysql_host'];
-        $this->_mysql_user = $config['mysql_user'];
+        $this->_mysql_host = (isset($config['mysql_host'])) ? $config['mysql_host'] : "localhost";
+        $this->_mysql_user = (isset($config['mysql_user'])) ? $config['mysql_user'] : "admin";
         $this->_mysql_pass = $config['mysql_pass'];
-        $this->_mysql_port = $config['mysql_port'];
+        $this->_mysql_port = (isset($config['mysql_port'])) ? $config['mysql_port'] : "8306";
 
         $this->_hostname = $config['hostname'];
 
-        $this->_basedir = $config['basedir'];
-        $this->_date_format = $config['date_format'];
-        $this->_max_file_life = $config['max_file_life'];
-        $this->_max_waiting_time = $config['max_waiting_time'];
+        $this->_basedir = (isset($config['basedir'])) ? $config['basedir'] : "/backup";
+        $this->_date_format = (isset($config['date_format'])) ? $config['date_format'] : "m_d_Y";
+        $this->_max_file_life = (isset($config['max_file_life'])) ? $config['max_file_life'] : 40;
+        $this->_max_waiting_time = (isset($config['max_waiting_time'])) ? $config['max_waiting_time'] : 300;
 
-        //plesk api backup
-        $this->_client = new PleskApiClient($this->_hostname);
-        $this->_client->setCredentials($this->_mysql_user, $this->_mysql_pass);
+        try {
+          //plesk api backup
+          $this->_client = new PleskApiClient($this->_hostname);
+          $this->_client->setCredentials($this->_mysql_user, $this->_mysql_pass);
+        }
+        catch (Exception $e) {
+          die($e->getMessage());
+        }
 
     }
 
@@ -114,8 +126,8 @@ class BackupHelper
 
       $this->serverSettings();
 
-      $this->_link = mysqli_connect($this->_mysql_host.":".$this->_mysql_port, $this->_mysql_user, $this->_mysql_pass) or die("can't connect");
-      mysqli_select_db($this->_link, "psa") or die("can't select db");
+      $this->_link = mysqli_connect($this->_mysql_host.":".$this->_mysql_port, $this->_mysql_user, $this->_mysql_pass) or die("can't connect to mysql server");
+      mysqli_select_db($this->_link, "psa") or die("can't select mysql db");
 
       $query = mysqli_query($this->_link,"SELECT dom.id, dom.name FROM domains dom");
       while ($row=mysqli_fetch_array($query)){
@@ -138,10 +150,10 @@ class BackupHelper
                       <protocol>ftp</protocol>
                       <host>'.$this->_ftp_host.'</host>
                       <port>22</port>
-                      <directory>'.$dir.'/</directory>
+                      <directory>'.$dir.'</directory>
                       <login>'.$this->_ftp_username.'</login>
                       <password>'.$this->ftp_pass.'</password>
-                      <passive-mode>true</passive-mode>
+                      <passive-mode>'.$this->_ftp_passive_mode.'</passive-mode>
               </settings>
          </set-remote-storage-settings>
       </backup-manager>
@@ -151,7 +163,7 @@ class BackupHelper
 
       mysqli_query($this->_link,"UPDATE backupssettings SET value='true' where param='backup_ftp_settingactive' WHERE id = ".$id_dom);
       mysqli_query($this->_link,"UPDATE backupssettings SET value='true' where param='backup_ftp_settinguse_ftps' WHERE id = ".$id_dom);
-      mysqli_query($this->_link,"UPDATE backupssettings SET value='true' where param='backup_ftp_settingpassive_mode' WHERE id = ".$id_dom);
+      mysqli_query($this->_link,"UPDATE backupssettings SET value='".$this->_ftp_passive_mode."' where param='backup_ftp_settingpassive_mode' WHERE id = ".$id_dom);
 
       $request_backup='<packet>
       <backup-manager>
