@@ -9,8 +9,6 @@
 
 set_time_limit(0);
 
-//date_default_timezone_set('Europe/Paris'); //turn off that warning :-)
-
 require 'config.php';
 require 'BackupHelper.php';
 

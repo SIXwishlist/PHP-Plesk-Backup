@@ -6,6 +6,10 @@
  * @link        http://www.josie.it
  */
 
+
+ //date_default_timezone_set('Europe/Paris'); //turn off that warning :-)
+
+
 $config = [
 
   "hostname" => "", //hostname of the machine where we are performing the backup

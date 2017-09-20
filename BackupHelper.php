@@ -91,6 +91,8 @@ class BackupHelper
         $this->scheduleDomainBackup($row['name'],$row['id'],$dir);
       }
 
+      mysqli_close($this->_link);
+
     }
 
     public function doBackup(){
@@ -106,6 +108,8 @@ class BackupHelper
         $this->deleteOldFiles($dir);
         $this->backupDomain($row['name'],$row['id'],$dir);
       }
+
+      mysqli_close($this->_link);
     }
 
     private function deleteOldFiles($dir){
@@ -162,12 +166,14 @@ class BackupHelper
 
     private function scheduleDomainBackup($dom,$id_dom,$dir){
 
+      echo "Scheduling backup for ".$dom." ...\n";
+
       $this->domainSettings($dom,$id_dom,$dir);
 
       $query = mysqli_query($this->_link,"SELECT COUNT(*) as count FROM backupsscheduled WHERE obj_id=".$id_dom." AND obj_type='domain'");
       while ($row=mysqli_fetch_array($query)) { $count = $row['count']; }
       $query_string = "INSERT INTO backupssettings (obj_id,obj_type,repository,last,period,active,processed, rotation, prefix, email, split_size, suspend, with_content, backup_day, backup_time, content_type, full_backup_period, mssql_native_backup, backupExcludeFilesId, backupExcludeLogs) VALUES
-      (".$id_dom.",'domain','ftp','".date('Y-m-d H:i:s')."', '604800', 'true', 'false', 5, '".$this->_scheduler_alert_email."', 0, 'false', 'true', ".$this->_scheduler_day.", '".$this->_scheduler_time."', 'backup_content_all_at_domain', 0, 1, 2, 1)";
+      (".$id_dom.",'domain','ftp','".date('Y-m-d H:i:s')."', '604800', 'true', 'false', 5, '','".$this->_scheduler_alert_email."', 0, 'false', 'true', ".$this->_scheduler_day.", '".$this->_scheduler_time."', 'backup_content_all_at_domain', 0, 1, 2, 1)";
       if ($count > 0 ){
             mysqli_query($this->_link,str_replace("INSERT","REPLACE",$query_string));
       } else {
