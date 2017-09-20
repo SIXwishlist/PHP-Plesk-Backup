@@ -26,4 +26,10 @@ $config = [
   "date_format" => date("m_d_Y"), //to be used in file names
   "max_file_life" => 40, //max lifetime for old backup files before they are deleted (in days)
   "max_waiting_time" => 300, // max waiting time before proceeding with the next task leaving the old one going on in background (in seconds)
+
+  //the following settings are used only with backup_scheduler.php
+  "scheduler_alert_email" => "0", //email alert in case of errors in the scheduled task
+  "scheduler_day" => "7", //day of the week for the weekly backup task (7 is Sunday)
+  "scheduler_time" => "00:00:00", //time for the weekly backup task
+
 ];

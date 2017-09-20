@@ -1,10 +1,16 @@
 # PHP-Plesk-Backup
-The script will backup all the domains on a Plesk server and upload the compressed backup files on remote FTP repository. Every domain will be backup in a different file and the script will wait for a backup task to be completed before proceeding with the next one.
+The script will backup all the domains on a Plesk server and upload the compressed backup files on remote FTP repository.<br>
 
 ## Quick start
 - [Download the latest version][download-link] of the package on the Plesk server you want to backup<br>
 - Rename config-sample.php to config.php<br>
 - Edit config.php file and fill in all the settings in order to have the script working correctly
+
+## The two main methods
+
+The _doBackup()_ method (used in backup.php) will parse all the domains and set a backup task for each one of them to be run immediately. Every domain will be backup in a different file and the script will wait for a backup task to be completed before proceeding with the next one.<br><br>
+The _scheduleBackups()_ method (used in scheduled_backup.php) will parse all the domains in your server and set a scheduled backup task for each of them so that a backup will be performed weekly (you can set the day/time of the scheduled task using the settings, see below).
+
 
 ## The settings
 
@@ -32,6 +38,12 @@ $config = [
   "date_format" => date("m_d_Y"), //to be used in file names
   "max_file_life" => 40, //max lifetime for old backup files before they are deleted (in days)
   "max_waiting_time" => 300, // max waiting time before proceeding with the next task leaving the old one going on in background (in seconds)
+
+  //the following settings are used only with scheduleBackups() method
+  "scheduler_alert_email" => "0", //email alert in case of errors in the scheduled task
+  "scheduler_day" => "7", //day of the week for the weekly backup task (7 is Sunday)
+  "scheduler_time" => "00:00:00", //time for the weekly backup task
+
 ];
 ```
 
@@ -44,7 +56,8 @@ The backup can be easily executed by running the included **backup.php** file.
 
 ## Automate the backup
 
-You can easily automate the backup by adding a scheduled activity on your Plesk Admin Panel.
+You can use the _scheduleBackups_ method and run it periodically so that all the domains, even the newly added, have a scheduled backup task set.<br><br>
+In alternative you can easily automate the backup by adding a scheduled activity on your Plesk Admin Panel.
 
 **On Linux**<br>
 > Please note: replace "/opt/scripts/PHP-Plesk-Backup" with the path where you downloaded the script.  

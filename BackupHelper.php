@@ -31,6 +31,10 @@ class BackupHelper
     private $_max_waiting_time;
     private $_sleep_time = 10;
 
+    private $_scheduler_alert_email;
+    private $_scheduler_day;
+    private $_scheduler_time;
+
     private $_link;
 
     private $_client;
@@ -59,8 +63,11 @@ class BackupHelper
         $this->_max_file_life = (isset($config['max_file_life'])) ? $config['max_file_life'] : 40;
         $this->_max_waiting_time = (isset($config['max_waiting_time'])) ? $config['max_waiting_time'] : 300;
 
+        $this->_scheduler_alert_email = (isset($config['scheduler_alert_email'])) ? $config['scheduler_alert_email'] : '0';
+        $this->_scheduler_day = (isset($config['scheduler_day'])) ? $config['scheduler_day'] : '7';
+        $this->_scheduler_time = (isset($config['scheduler_time'])) ? $config['scheduler_time'] : '00:00:00';
+
         try {
-          //plesk api backup
           $this->_client = new PleskApiClient($this->_hostname);
           $this->_client->setCredentials($this->_mysql_user, $this->_mysql_pass);
         }
@@ -68,6 +75,37 @@ class BackupHelper
           die($e->getMessage());
         }
 
+    }
+
+    public function scheduleBackups(){
+
+      $this->serverSettings();
+
+      $this->_link = mysqli_connect($this->_mysql_host.":".$this->_mysql_port, $this->_mysql_user, $this->_mysql_pass) or die("can't connect to mysql server");
+      mysqli_select_db($this->_link, "psa") or die("can't select mysql db");
+
+      $query = mysqli_query($this->_link,"SELECT dom.id, dom.name FROM domains dom");
+      while ($row=mysqli_fetch_array($query)){
+        $dir = $this->_basedir.'/'.$row['name'].'/';
+        $this->deleteOldFiles($dir);
+        $this->scheduleDomainBackup($row['name'],$row['id'],$dir);
+      }
+
+    }
+
+    public function doBackup(){
+
+      $this->serverSettings();
+
+      $this->_link = mysqli_connect($this->_mysql_host.":".$this->_mysql_port, $this->_mysql_user, $this->_mysql_pass) or die("can't connect to mysql server");
+      mysqli_select_db($this->_link, "psa") or die("can't select mysql db");
+
+      $query = mysqli_query($this->_link,"SELECT dom.id, dom.name FROM domains dom");
+      while ($row=mysqli_fetch_array($query)){
+        $dir = $this->_basedir.'/'.$row['name'].'/';
+        $this->deleteOldFiles($dir);
+        $this->backupDomain($row['name'],$row['id'],$dir);
+      }
     }
 
     private function deleteOldFiles($dir){
@@ -122,26 +160,23 @@ class BackupHelper
         return false;
     }
 
-    public function doBackup(){
+    private function scheduleDomainBackup($dom,$id_dom,$dir){
 
-      $this->serverSettings();
+      $this->domainSettings($dom,$id_dom,$dir);
 
-      $this->_link = mysqli_connect($this->_mysql_host.":".$this->_mysql_port, $this->_mysql_user, $this->_mysql_pass) or die("can't connect to mysql server");
-      mysqli_select_db($this->_link, "psa") or die("can't select mysql db");
-
-      $query = mysqli_query($this->_link,"SELECT dom.id, dom.name FROM domains dom");
-      while ($row=mysqli_fetch_array($query)){
-        $dir = $this->_basedir.'/'.$row['name'].'/';
-        $this->deleteOldFiles($dir);
-        $this->backupDomain($row['name'],$row['id'],$dir);
+      $query = mysqli_query($this->_link,"SELECT COUNT(*) as count FROM backupsscheduled WHERE obj_id=".$id_dom." AND obj_type='domain'");
+      while ($row=mysqli_fetch_array($query)) { $count = $row['count']; }
+      $query_string = "INSERT INTO backupssettings (obj_id,obj_type,repository,last,period,active,processed, rotation, prefix, email, split_size, suspend, with_content, backup_day, backup_time, content_type, full_backup_period, mssql_native_backup, backupExcludeFilesId, backupExcludeLogs) VALUES
+      (".$id_dom.",'domain','ftp','".date('Y-m-d H:i:s')."', '604800', 'true', 'false', 5, '".$this->_scheduler_alert_email."', 0, 'false', 'true', ".$this->_scheduler_day.", '".$this->_scheduler_time."', 'backup_content_all_at_domain', 0, 1, 2, 1)";
+      if ($count > 0 ){
+            mysqli_query($this->_link,str_replace("INSERT","REPLACE",$query_string));
+      } else {
+            mysqli_query($this->_link,$query_string);
       }
+
     }
 
-    private function backupDomain($dom,$id_dom,$dir){
-
-      echo "Backing up ".$dom." ...\n";
-      echo "Selected dir is ".$dir."\n";
-
+    private function domainSettings($dom,$id_dom,$dir){
       $request_storage = '<packet>
       <backup-manager>
          <set-remote-storage-settings>
@@ -164,6 +199,14 @@ class BackupHelper
       mysqli_query($this->_link,"UPDATE backupssettings SET value='true' where param='backup_ftp_settingactive' WHERE id = ".$id_dom);
       mysqli_query($this->_link,"UPDATE backupssettings SET value='true' where param='backup_ftp_settinguse_ftps' WHERE id = ".$id_dom);
       mysqli_query($this->_link,"UPDATE backupssettings SET value='".$this->_ftp_passive_mode."' where param='backup_ftp_settingpassive_mode' WHERE id = ".$id_dom);
+    }
+
+    private function backupDomain($dom,$id_dom,$dir){
+
+      echo "Backing up ".$dom." ...\n";
+      echo "Selected dir is ".$dir."\n";
+
+      $this->domainSettings($dom,$id_dom,$dir);
 
       $request_backup='<packet>
       <backup-manager>
